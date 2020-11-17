@@ -36,3 +36,22 @@
     transform: rotate(360deg);
   }
 }
+
+#video {
+	width: 480px;
+	height: 360px;
+	background-color: #666;
+}
+
+#canvas{
+  position: absolute;
+  width: 480px;
+  height: 360px;
+  border: 1px red solid;
+}
+
+.video-div{
+  position: absolute;
+  left:32%
+}
+
