@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@tensorflow/tfjs": "^2.7.0",
+    "@tensorflow/tfjs-backend-wasm": "^2.7.0",
     "@tensorflow/tfjs-converter": "^2.7.0",
     "@testing-library/jest-dom": "^5.11.6",
     "@testing-library/react": "^11.1.2",

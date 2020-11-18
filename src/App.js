@@ -4,8 +4,13 @@ import './App.css';
 import * as tf from '@tensorflow/tfjs'
 import { loadGraphModel } from '@tensorflow/tfjs-converter'
 import FPSStats from "react-fps-stats";
+import {setWasmPaths} from '@tensorflow/tfjs-backend-wasm';
 
-const MODEL_URL = "web_model/web_model/model.json"
+const MODEL_URL = "web_model/model.json"
+var imgWidth = 640
+var imgHeight = 480
+var array = new Array(91)
+console.log(array)
 
 function App() {
 
@@ -24,17 +29,18 @@ useEffect(()=>{
 
 
 const loadCustomModel =async()=> {
+  // setWasmPaths('tfjs-wasm');
+  tf.setBackend('webgl')
   // load the model with loadGraphModel
- var models =  await tf.loadGraphModel(MODEL_URL)
+ var models =  await loadGraphModel(MODEL_URL)
       setModel(models)
       setIsModelReady(true)
-      console.log('model loaded: ', models)
-      detectObjects(models)
-      
-    // .catch((error) => {
-    //   console.log('failed to load the model', error)
-    //   throw (error)
-    // })
+      // console.log('model loaded: ', models)
+      document.getElementById("video").onloadeddata = function(){
+      setInterval(() => {
+        detectObjects(models)
+      });
+    }
 }
 
 
@@ -55,67 +61,43 @@ const loadCustomModel =async()=> {
 
 
   const detectObjects =async(models)=> {
-    console.log("entered")
     if(models){
-      console.log("inside")
-var img = document.createElement("img")
-img.src = "hand.jpg"
-img.width=2063
-img.height = 1523
+var img = document.getElementById("video")
     const tfImg = tf.browser.fromPixels(img)
-    console.log(tfImg,"tfimg")
-    const smallImg = tf.image.resizeBilinear(tfImg, [300, 300]) // 600, 450
+    const smallImg = tf.image.resizeBilinear(tfImg, [70, 70]) // 600, 450
     const resized = tf.cast(smallImg, 'int32')
-    console.log(resized,"resizedimg")
-    const tf4d = tf.tensor4d(Array.from(resized.dataSync()), [1, 300, 300, 3])
+    const tf4d = tf.tensor4d(Array.from(resized.dataSync()), [1, 70, 70, 3])
     const tf4d1 = tf.cast(tf4d, 'int32') // 600, 450
-    console.log(tf4d1,"tf4dimg")
-    let predictions = await models.executeAsync({ input_tensor: tf4d1 }, ['detection_scores'])
-    console.log(predictions,"prediction")
-    // renderPredictionBoxes(predictions[0].dataSync(), predictions[1].dataSync(), predictions[2].dataSync(), predictions[3].dataSync())
+    let predictions = await models.executeAsync({ input_tensor: tf4d1 }, ['StatefulPartitionedCall/Postprocessor/BatchMultiClassNonMaxSuppression/stack_6','StatefulPartitionedCall/Postprocessor/Cast_4','StatefulPartitionedCall/Postprocessor/BatchMultiClassNonMaxSuppression/stack_7'])
+    // console.log(predictions[2].dataSync(),"prediction")
+    renderPredictionBoxes(predictions[0].dataSync(),predictions[1].dataSync(),predictions[2].dataSync())
     tfImg.dispose()
     smallImg.dispose()
     resized.dispose()
     tf4d.dispose()
-    // requestAnimationFrame(() => {
-    //   detectObjects()
-    // })
-  }
-  else{
-    setTimeout(() => {
-      detectObjects()
-    }, 1000);
-   
-  }
   }
 
-  const renderPredictionBoxes =async(predictionBoxes, totalPredictions, predictionClasses, predictionScores)=> {
+  }
+
+  const renderPredictionBoxes =async(predictionBoxes, totalPredictions,predictionScores)=> {
     // get the context of canvas
     const ctx = document.getElementById("canvas").getContext("2d")
     // clear the canvas
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
     // draw results
-    for (let i = 0; i < totalPredictions[0]; i++) {
-      const minY = predictionBoxes[i * 4] * 450
-      const minX = predictionBoxes[i * 4 + 1] * 600
-      const maxY = predictionBoxes[i * 4 + 2] * 450
-      const maxX = predictionBoxes[i * 4 + 3] * 600
-      const score = predictionScores[i * 3] * 100
+    for (let i = 0; i < totalPredictions; i++) {
+      const minY = predictionBoxes[i * 4] * imgHeight
+      const minX = predictionBoxes[i * 4 + 1] * imgWidth
+      const maxY = predictionBoxes[i * 4 + 2] * imgHeight
+      const maxX = predictionBoxes[i * 4 + 3] * imgWidth
+      const score = predictionScores[i*3] * 100
       if (score > 75) {
         ctx.beginPath()
         ctx.rect(minX, minY, maxX - minX, maxY - minY)
-        ctx.lineWidth = 3
+        ctx.lineWidth = 6
         ctx.strokeStyle = 'red'
         ctx.fillStyle = 'red'
         ctx.stroke()
-        ctx.shadowColor = 'white'
-        ctx.shadowBlur = 10
-        ctx.font = '14px Arial bold'
-        ctx.fillText(
-          `${score.toFixed(1)} - Jagermeister bottle`,
-          minX,
-          minY > 10 ? minY - 5 : 10
-        )
       }
     }
   }
@@ -131,10 +113,13 @@ img.height = 1523
   <h3>Loading Model..</h3>
   <h3>Failed to init stream and/or model -</h3>
   <div className="video-div">
+
   <div className="row">
-  <video autoPlay id="video"></video>
-      <canvas id="canvas"></canvas>
+  <video width={imgWidth} height={imgHeight} autoPlay id="video"></video>
+      <canvas width={imgWidth} height={imgHeight} id="canvas"></canvas>
     </div>
+  
+
     </div>
 
 </div>
